@@ -30,6 +30,7 @@
 #include "version.h"
 
 extern AVCodec ff_libvvdec_decoder;
+extern AVCodec ff_libopenvvc_decoder;
 extern AVCodec ff_a64multi_encoder;
 extern AVCodec ff_a64multi5_encoder;
 extern AVCodec ff_aasc_decoder;
