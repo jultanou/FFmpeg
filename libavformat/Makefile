@@ -311,7 +311,7 @@ OBJS-$(CONFIG_MATROSKA_DEMUXER)          += matroskadec.o matroska.o  \
                                             oggparsevorbis.o vorbiscomment.o \
                                             qtpalette.o replaygain.o
 OBJS-$(CONFIG_MATROSKA_MUXER)            += matroskaenc.o matroska.o \
-                                            av1.o avc.o hevc.o isom_tags.o \
+                                            av1.o avc.o hevc.o vvc.o isom_tags.o \
                                             flacenc_header.o avlanguage.o \
                                             vorbiscomment.o wv.o
 OBJS-$(CONFIG_MCA_DEMUXER)               += mca.o
@@ -333,7 +333,7 @@ OBJS-$(CONFIG_MODS_DEMUXER)              += mods.o
 OBJS-$(CONFIG_MOFLEX_DEMUXER)            += moflex.o
 OBJS-$(CONFIG_MOV_DEMUXER)               += mov.o mov_chan.o mov_esds.o \
                                             qtpalette.o replaygain.o
-OBJS-$(CONFIG_MOV_MUXER)                 += movenc.o av1.o avc.o hevc.o vpcc.o \
+OBJS-$(CONFIG_MOV_MUXER)                 += movenc.o av1.o avc.o hevc.o vvc.o vpcc.o \
                                             movenchint.o mov_chan.o rtp.o \
                                             movenccenc.o rawutils.o
 OBJS-$(CONFIG_MP2_MUXER)                 += rawenc.o
@@ -480,7 +480,7 @@ OBJS-$(CONFIG_RTP_MUXER)                 += rtp.o         \
                                             rtpenc_vp8.o  \
                                             rtpenc_vp9.o                \
                                             rtpenc_xiph.o \
-                                            avc.o hevc.o
+                                            avc.o hevc.o vvc.o
 OBJS-$(CONFIG_RTSP_DEMUXER)              += rtsp.o rtspdec.o httpauth.o \
                                             urldecode.o
 OBJS-$(CONFIG_RTSP_MUXER)                += rtsp.o rtspenc.o httpauth.o \
@@ -575,7 +575,7 @@ OBJS-$(CONFIG_WAV_DEMUXER)               += wavdec.o pcm.o
 OBJS-$(CONFIG_WAV_MUXER)                 += wavenc.o
 OBJS-$(CONFIG_WC3_DEMUXER)               += wc3movie.o
 OBJS-$(CONFIG_WEBM_MUXER)                += matroskaenc.o matroska.o \
-                                            av1.o avc.o hevc.o isom_tags.o \
+                                            av1.o avc.o hevc.o vvc.o isom_tags.o \
                                             flacenc_header.o avlanguage.o \
                                             wv.o vorbiscomment.o
 OBJS-$(CONFIG_WEBM_DASH_MANIFEST_MUXER)  += webmdashenc.o

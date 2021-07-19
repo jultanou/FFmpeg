@@ -1811,7 +1811,7 @@ EXTERNAL_LIBRARY_LIST="
     libsoxr
     libspeex
     libsrt
-    libssh
+    libssh	
     libsvtav1
     libtensorflow
     libtesseract

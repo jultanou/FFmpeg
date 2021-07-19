@@ -54,6 +54,7 @@
 #include "libavutil/dovi_meta.h"
 #include "libavutil/color_utils.h"
 #include "hevc.h"
+#include "vvc.h"
 #include "rtpenc.h"
 #include "mov_chan.h"
 #include "vpcc.h"
@@ -1326,6 +1327,19 @@ static int mov_write_hvcc_tag(AVIOContext *pb, MOVTrack *track)
     return update_size(pb, pos);
 }
 
+static int mov_write_vvcc_tag(AVIOContext *pb, MOVTrack *track)
+{
+    int64_t pos = avio_tell(pb);
+
+    avio_wb32(pb, 0);
+    ffio_wfourcc(pb, "vvcC");
+    if (track->tag == MKTAG('v','v','c','1'))
+        ff_isom_write_vvcc(pb, track->vos_data, track->vos_len, 1);
+    else
+        ff_isom_write_vvcc(pb, track->vos_data, track->vos_len, 0);
+    return update_size(pb, pos);
+}
+
 /* also used by all avid codecs (dv, imx, meridien) and their variants */
 static int mov_write_avid_tag(AVIOContext *pb, MOVTrack *track)
 {
@@ -2198,6 +2212,8 @@ static int mov_write_video_tag(AVFormatContext *s, AVIOContext *pb, MOVMuxContex
         avid = 1;
     } else if (track->par->codec_id == AV_CODEC_ID_HEVC)
         mov_write_hvcc_tag(pb, track);
+    else if (track->par->codec_id == AV_CODEC_ID_VVC)
+        mov_write_vvcc_tag(pb, track);
     else if (track->par->codec_id == AV_CODEC_ID_H264 && !TAG_IS_AVCI(track->tag)) {
         mov_write_avcc_tag(pb, track);
         if (track->mode == MODE_IPOD)
@@ -7184,6 +7200,8 @@ static const AVCodecTag codec_mp4_tags[] = {
     { AV_CODEC_ID_H264,            MKTAG('a', 'v', 'c', '3') },
     { AV_CODEC_ID_HEVC,            MKTAG('h', 'e', 'v', '1') },
     { AV_CODEC_ID_HEVC,            MKTAG('h', 'v', 'c', '1') },
+    { AV_CODEC_ID_VVC,             MKTAG('v', 'v', 'c', '1') },
+    { AV_CODEC_ID_VVC,             MKTAG('v', 'v', 'i', '1') },
     { AV_CODEC_ID_MPEG2VIDEO,      MKTAG('m', 'p', '4', 'v') },
     { AV_CODEC_ID_MPEG1VIDEO,      MKTAG('m', 'p', '4', 'v') },
     { AV_CODEC_ID_MJPEG,           MKTAG('m', 'p', '4', 'v') },
