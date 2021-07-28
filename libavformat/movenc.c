@@ -1332,7 +1332,8 @@ static int mov_write_vvcc_tag(AVIOContext *pb, MOVTrack *track)
     int64_t pos = avio_tell(pb);
 
     avio_wb32(pb, 0);
-    ffio_wfourcc(pb, "vvcC");
+    ffio_wfourcc_full_box(pb, "vvcC");
+    //avio_wb32(pb, 0);
     if (track->tag == MKTAG('v','v','c','1'))
         ff_isom_write_vvcc(pb, track->vos_data, track->vos_len, 1);
     else
