@@ -140,9 +140,10 @@ static void vvcc_update_ptl(VVCDecoderConfigurationRecord *vvcc,
       *vvcc->general_constraint_info = *vvcc->general_constraint_info << 8  | ptl->gci_num_reserved_bits;
       *vvcc->general_constraint_info = *vvcc->general_constraint_info << (int)(8*ceil(ptl->gci_num_reserved_bits / 8.));
     } else {
-      vvcc->num_bytes_constraint_info = 1;
-      vvcc->general_constraint_info = (uint8_t *) malloc(sizeof(uint8_t));
-      *vvcc->general_constraint_info = 0x00;
+      printf("not present\n");
+      vvcc->num_bytes_constraint_info = 12;
+      vvcc->general_constraint_info = (uint8_t *) malloc(vvcc->num_bytes_constraint_info*sizeof(uint8_t));
+      *vvcc->general_constraint_info = 0x000000000000000000000000;
 
     }
     
@@ -189,7 +190,6 @@ static void vvcc_parse_ptl(GetBitContext *gb,
     general_ptl.ptl_multilayer_enabled_flag = get_bits1(gb);
     if(profileTierPresentFlag) {
       general_ptl.gci_present_flag = get_bits1(gb);
-      printf("gci_present_flag = %d\n", general_ptl.gci_present_flag);
       if(general_ptl.gci_present_flag) {
 	  general_ptl.gci_general_constraints = get_bits_long(gb, 71);
 	  general_ptl.gci_num_reserved_bits = get_bits(gb, 8);
@@ -415,11 +415,11 @@ static int vvcc_parse_vps(GetBitContext *gb,
       
     while(gb->index%8 != 0)
       skip_bits1(gb);
-    printf("vps ptl -> %d\n", vps_num_ptls_minus1);
+
     for(int i = 0; i <= vps_num_ptls_minus1; i++) {
       vvcc_parse_ptl(gb, vvcc, vps_pt_present_flag[i], vps_ptl_max_tid[i]);
     }
-    printf("ptl end\n");
+
     /* nothing useful for vvcc past this point */
     return 0;
 }
@@ -478,6 +478,7 @@ static int vvcc_parse_sps(GetBitContext *gb,
       skip_bits1(gb); //sps_res_change_in_clvs_allowed_flag
       sps_pic_width_max_in_luma_sample = get_ue_golomb_long(gb);
       vvcc->max_picture_width = FFMAX(vvcc->max_picture_width , sps_pic_width_max_in_luma_sample);
+      printf("extracted / real : %d / %d\n",sps_pic_width_max_in_luma_sample, vvcc->max_picture_width);
       sps_pic_height_max_in_luma_sample= get_ue_golomb_long(gb);
       vvcc->max_picture_height = FFMAX(vvcc->max_picture_height , sps_pic_height_max_in_luma_sample);
       printf("sps width height -> %dx%d\n", vvcc->max_picture_width, vvcc->max_picture_height);
@@ -794,7 +795,8 @@ static int vvcc_write(AVIOContext *pb, VVCDecoderConfigurationRecord *vvcc)
      * unsigned int(2) constant_frame_rate;
      * unsigned int(2) chroma_format_idc;     */
     avio_wb16(pb, vvcc->ols_idx << 7 | vvcc->num_sublayers << 4 | vvcc->constant_frame_rate << 2 | vvcc->chroma_format_idc);
-
+    printf("writing chroma format : %d\n", vvcc->chroma_format_idc);
+    
     /* unsigned int(3) bit_depth_minus8;
        bit(5) reserved = ‘11111’b;*/
     avio_w8(pb, vvcc->bit_depth_minus8 << 5 | 0x1f);
@@ -807,7 +809,7 @@ static int vvcc_write(AVIOContext *pb, VVCDecoderConfigurationRecord *vvcc)
 
     /* unsigned int (7) general_profile_idc 
        unsigned int (1) general_tier_flag */
-    avio_w8(pb, vvcc->general_profile_idc | vvcc->general_tier_flag);
+    avio_w8(pb, vvcc->general_profile_idc << 1 | vvcc->general_tier_flag);
 	    
     /* unsigned int (8) general_level_idc */
     avio_w8(pb, vvcc->general_level_idc);
@@ -818,6 +820,7 @@ static int vvcc_write(AVIOContext *pb, VVCDecoderConfigurationRecord *vvcc)
      * unsigned int (8*num_bytes_constraint_info -2) general_constraint_info */
     uint8_t *buf = (uint8_t *) malloc(sizeof(uint8_t) * vvcc->num_bytes_constraint_info);
     *buf = vvcc->ptl_frame_only_constraint_flag << vvcc->num_bytes_constraint_info*8-1 | vvcc->ptl_multilayer_enabled_flag << vvcc->num_bytes_constraint_info*8-2 | *vvcc->general_constraint_info >> 2;
+    printf("buf : %d, num bytes : %d\n", *buf, vvcc->num_bytes_constraint_info);
     avio_write(pb, buf, vvcc->num_bytes_constraint_info);
     /*for(int i = num_sublayers -2; i >= 0; i--) {
        unsigned int (1) ptl_sublayer_level_present_flag[i]
@@ -852,6 +855,7 @@ static int vvcc_write(AVIOContext *pb, VVCDecoderConfigurationRecord *vvcc)
     /*
      * unsigned int(16) max_picture_width;*/
     avio_wb16(pb, vvcc->max_picture_width);
+    printf("writing width : %d\n", vvcc->max_picture_width);
     
     /*
      * unsigned int(16) max_picture_height;*/
@@ -968,10 +972,6 @@ int ff_isom_write_vvcc(AVIOContext *pb, const uint8_t *data,
     uint8_t *buf, *end, *start;
     int ret;
     uint8_t buf_sps[3];
-
-    uint8_t *data_appended = (uint8_t *) malloc(size + 3*sizeof(uint8_t));
-    int size_appended = size+3;
-    *data_appended = *data << 24 | 0x900000;
       
     printf("isom write vvc\n");
     
@@ -1020,14 +1020,6 @@ int ff_isom_write_vvcc(AVIOContext *pb, const uint8_t *data,
 
         buf += len;
     }
-    printf("adding false pps\n");
-    /*buf_sps[0] = 0x90;
-    buf_sps[1] = 0x00;
-    buf_sps[2] = 0x00;
-    uint32_t len = FFMIN(AV_RB32(buf_sps), 3*sizeof(uint8_t) - 4);
-    
-    vvcc_add_nal_unit(buf_sps, len, ps_array_completeness, &vvcc);
-    free(buf_sps);*/
     
     ret = vvcc_write(pb, &vvcc);
 
