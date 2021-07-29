@@ -140,10 +140,9 @@ static void vvcc_update_ptl(VVCDecoderConfigurationRecord *vvcc,
       *vvcc->general_constraint_info = *vvcc->general_constraint_info << 8  | ptl->gci_num_reserved_bits;
       *vvcc->general_constraint_info = *vvcc->general_constraint_info << (int)(8*ceil(ptl->gci_num_reserved_bits / 8.));
     } else {
-      printf("not present\n");
-      vvcc->num_bytes_constraint_info = 12;
+      vvcc->num_bytes_constraint_info = 1;
       vvcc->general_constraint_info = (uint8_t *) malloc(vvcc->num_bytes_constraint_info*sizeof(uint8_t));
-      *vvcc->general_constraint_info = 0x000000000000000000000000;
+      *vvcc->general_constraint_info = 0x00;
 
     }
     
@@ -198,6 +197,7 @@ static void vvcc_parse_ptl(GetBitContext *gb,
       while(gb->index % 8 != 0)
 	skip_bits1(gb);
     }
+
     general_ptl.ptl_sublayer_level_present_flag = (uint8_t *) malloc(sizeof(uint8_t)*max_sub_layers_minus1);
     for(int i = max_sub_layers_minus1-1; i >= 0; i--) {
       general_ptl.ptl_sublayer_level_present_flag[i] = get_bits1(gb);
@@ -217,8 +217,12 @@ static void vvcc_parse_ptl(GetBitContext *gb,
 	general_ptl.general_sub_profile_idc[i] = get_bits_long(gb, 32);
       }
     }
-    
+  
     vvcc_update_ptl(vvcc, &general_ptl);
+
+    free(general_ptl.ptl_sublayer_level_present_flag);
+    free(general_ptl.sublayer_level_idc);
+    free(general_ptl.general_sub_profile_idc);
 }
 
 static void skip_sub_layer_hrd_parameters(GetBitContext *gb,
@@ -340,12 +344,11 @@ static int vvcc_parse_vps(GetBitContext *gb,
   unsigned int vps_all_independant_layer_flag;
   unsigned int vps_each_layer_is_an_ols_flag;
   unsigned int vps_ols_mode_idc;
-  unsigned int vps_num_ptls_minus1;
 
   unsigned int *vps_pt_present_flag;
   unsigned int *vps_ptl_max_tid;
+  unsigned int vps_num_ptls_minus1 = 0;
 
-    printf("vvc parse vps\n");
     
     /*
      * vps_video_parameter_set_id u(4)
@@ -419,6 +422,9 @@ static int vvcc_parse_vps(GetBitContext *gb,
     for(int i = 0; i <= vps_num_ptls_minus1; i++) {
       vvcc_parse_ptl(gb, vvcc, vps_pt_present_flag[i], vps_ptl_max_tid[i]);
     }
+    
+    free(vps_pt_present_flag);
+    free(vps_ptl_max_tid);
 
     /* nothing useful for vvcc past this point */
     return 0;
@@ -451,7 +457,6 @@ static int vvcc_parse_sps(GetBitContext *gb,
     unsigned int sps_chroma_format_idc, sps_subpic_same_size_flag, sps_pic_height_max_in_luma_sample, sps_pic_width_max_in_luma_sample;
     unsigned int sps_independant_subpics_flag;
 
-    printf("vvc parse sps\n");
     skip_bits(gb, 8); // sps_seq_parameter_set_id && sps_video_parameter_set_id
     sps_max_sub_layers_minus1 = get_bits (gb, 3);
 
@@ -469,7 +474,6 @@ static int vvcc_parse_sps(GetBitContext *gb,
     vvcc->chroma_format_idc = get_bits(gb, 2);
     log2_ctu_size_minus5 = get_bits(gb, 2);
 
-    printf("sps ptl\n");
     if(get_bits1(gb)) //sps_ptl_dpb_hrd_params_present_flag
       vvcc_parse_ptl(gb, vvcc, 1, sps_max_sub_layers_minus1);
 
@@ -478,10 +482,8 @@ static int vvcc_parse_sps(GetBitContext *gb,
       skip_bits1(gb); //sps_res_change_in_clvs_allowed_flag
       sps_pic_width_max_in_luma_sample = get_ue_golomb_long(gb);
       vvcc->max_picture_width = FFMAX(vvcc->max_picture_width , sps_pic_width_max_in_luma_sample);
-      printf("extracted / real : %d / %d\n",sps_pic_width_max_in_luma_sample, vvcc->max_picture_width);
       sps_pic_height_max_in_luma_sample= get_ue_golomb_long(gb);
       vvcc->max_picture_height = FFMAX(vvcc->max_picture_height , sps_pic_height_max_in_luma_sample);
-      printf("sps width height -> %dx%d\n", vvcc->max_picture_width, vvcc->max_picture_height);
 
       
     if(get_bits1(gb)) {
@@ -522,7 +524,6 @@ static int vvcc_parse_sps(GetBitContext *gb,
       }
     }
     vvcc->bit_depth_minus8 = get_ue_golomb_long(gb); 
-    printf("sps bit_depth_minus8 : %d\n", vvcc->bit_depth_minus8);
 
     /* nothing useful for vvcc past this point */
     return 0;
@@ -532,16 +533,14 @@ static int vvcc_parse_pps(GetBitContext *gb,
                           VVCDecoderConfigurationRecord *vvcc)
 {
 
-  // TODO
+  // Nothing of importance to parse in PPS
   
     /* nothing useful for vvcc past this point */
     return 0;
 }
 
 static void nal_unit_parse_header(GetBitContext *gb, uint8_t *nal_type)
-{
-    printf("vvc parse nal unit header\n");
-    
+{    
     /*
      * forbidden_zero_bit    u(1)
      * nuh_reserved_zero_bit u(1)
@@ -564,14 +563,11 @@ static int vvcc_array_add_nal_unit(uint8_t *nal_buf, uint32_t nal_size,
     uint8_t index;
     uint16_t numNalus;
     VVCCNALUnitArray *array;
-
-    printf("vvcc_array_add_nal_unit\n");
     
     for (index = 0; index < vvcc->numOfArrays; index++)
         if (vvcc->array[index].NAL_unit_type == nal_type)
             break;
 
-    printf("numOfArrays : %d\n", vvcc->numOfArrays);
     if (index >= vvcc->numOfArrays) {
         uint8_t i;
 
@@ -621,8 +617,6 @@ static int vvcc_add_nal_unit(uint8_t *nal_buf, uint32_t nal_size,
     uint8_t nal_type;
     uint8_t *rbsp_buf;
     uint32_t rbsp_size;
-
-    printf("vvcc add nal unit\n");
     
     rbsp_buf = ff_nal_unit_extract_rbsp(nal_buf, nal_size, &rbsp_size, 2);
     if (!rbsp_buf) {
@@ -641,7 +635,6 @@ static int vvcc_add_nal_unit(uint8_t *nal_buf, uint32_t nal_size,
      * vvcc. Perhaps the SEI playload type should be checked
      * and non-declarative SEI messages discarded?
      */
-    printf("nal_type : %d\n", nal_type);
     switch (nal_type) {
     case VVC_OPI_NUT:
     case VVC_VPS_NUT:
@@ -676,7 +669,6 @@ end:
 
 static void vvcc_init(VVCDecoderConfigurationRecord *vvcc)
 {
-    printf("vvcc init\n");
     memset(vvcc, 0, sizeof(VVCDecoderConfigurationRecord));
     vvcc->lengthSizeMinusOne   = 3; // 4 bytes
     
@@ -687,7 +679,6 @@ static void vvcc_init(VVCDecoderConfigurationRecord *vvcc)
 
 static void vvcc_close(VVCDecoderConfigurationRecord *vvcc)
 {
-    printf("vvcc close\n");
     uint8_t i;
 
     for (i = 0; i < vvcc->numOfArrays; i++) {
@@ -696,6 +687,8 @@ static void vvcc_close(VVCDecoderConfigurationRecord *vvcc)
         av_freep(&vvcc->array[i].nalUnitLength);
     }
 
+    free(vvcc->general_constraint_info);
+    
     vvcc->numOfArrays = 0;
     av_freep(&vvcc->array);
 }
@@ -705,7 +698,6 @@ static int vvcc_write(AVIOContext *pb, VVCDecoderConfigurationRecord *vvcc)
     uint8_t i;
     uint16_t j, vps_count = 0, sps_count = 0, pps_count = 0;
 
-    printf("vvcc write\n");
     /*
      * It's unclear how to properly compute these fields, so
      * let's always set them to values meaning 'unspecified'.
@@ -795,7 +787,6 @@ static int vvcc_write(AVIOContext *pb, VVCDecoderConfigurationRecord *vvcc)
      * unsigned int(2) constant_frame_rate;
      * unsigned int(2) chroma_format_idc;     */
     avio_wb16(pb, vvcc->ols_idx << 7 | vvcc->num_sublayers << 4 | vvcc->constant_frame_rate << 2 | vvcc->chroma_format_idc);
-    printf("writing chroma format : %d\n", vvcc->chroma_format_idc);
     
     /* unsigned int(3) bit_depth_minus8;
        bit(5) reserved = ‘11111’b;*/
@@ -818,10 +809,10 @@ static int vvcc_write(AVIOContext *pb, VVCDecoderConfigurationRecord *vvcc)
      * unsigned int (1) ptl_frame_only_constraint_flag
      * unsigned int (1) ptl_multilayer_enabled_flag
      * unsigned int (8*num_bytes_constraint_info -2) general_constraint_info */
-    uint8_t *buf = (uint8_t *) malloc(sizeof(uint8_t) * vvcc->num_bytes_constraint_info);
+    int *buf = (int *) malloc(sizeof(uint8_t) * vvcc->num_bytes_constraint_info);
     *buf = vvcc->ptl_frame_only_constraint_flag << vvcc->num_bytes_constraint_info*8-1 | vvcc->ptl_multilayer_enabled_flag << vvcc->num_bytes_constraint_info*8-2 | *vvcc->general_constraint_info >> 2;
-    printf("buf : %d, num bytes : %d\n", *buf, vvcc->num_bytes_constraint_info);
     avio_write(pb, buf, vvcc->num_bytes_constraint_info);
+    free(buf);
     /*for(int i = num_sublayers -2; i >= 0; i--) {
        unsigned int (1) ptl_sublayer_level_present_flag[i]
     }
@@ -855,7 +846,6 @@ static int vvcc_write(AVIOContext *pb, VVCDecoderConfigurationRecord *vvcc)
     /*
      * unsigned int(16) max_picture_width;*/
     avio_wb16(pb, vvcc->max_picture_width);
-    printf("writing width : %d\n", vvcc->max_picture_width);
     
     /*
      * unsigned int(16) max_picture_height;*/
@@ -878,7 +868,6 @@ static int vvcc_write(AVIOContext *pb, VVCDecoderConfigurationRecord *vvcc)
          */
       avio_w8(pb, vvcc->array[i].array_completeness << 7 |
                     vvcc->array[i].NAL_unit_type & 0x1f);
-      printf("NAL Unit Type when writing isom : %d\n", vvcc->array[i].NAL_unit_type);
         /* unsigned int(16) numNalus; */
       if(vvcc->array[i].NAL_unit_type != VVC_DCI_NUT && vvcc->array[i].NAL_unit_type != VVC_OPI_NUT)
 	avio_wb16(pb, vvcc->array[i].numNalus);
@@ -899,8 +888,6 @@ int ff_vvc_annexb2mp4(AVIOContext *pb, const uint8_t *buf_in,
 {
     int num_ps = 0, ret = 0;
     uint8_t *buf, *end, *start = NULL;
-
-    printf("vvc_annexb2mp4\n");
     
     if (!filter_ps) {
         ret = ff_avc_parse_nal_units(pb, buf_in, size);
@@ -972,8 +959,6 @@ int ff_isom_write_vvcc(AVIOContext *pb, const uint8_t *data,
     uint8_t *buf, *end, *start;
     int ret;
     uint8_t buf_sps[3];
-      
-    printf("isom write vvc\n");
     
     if (size < 6) {
         /* We can't write a valid vvcc from the provided data */
@@ -996,7 +981,6 @@ int ff_isom_write_vvcc(AVIOContext *pb, const uint8_t *data,
     buf = start;
     end = start + size;
 
-    printf("buf / end : %d / %d\n", buf, end);
     while (end - buf > 4) {
         uint32_t len = FFMIN(AV_RB32(buf), end - buf - 4);
         uint8_t type = (buf[5] >> 3);

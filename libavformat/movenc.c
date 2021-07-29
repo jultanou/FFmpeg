@@ -4964,10 +4964,11 @@ static int mov_write_mdat_tag(AVIOContext *pb, MOVMuxContext *mov)
 {
     avio_wb32(pb, 8);    // placeholder for extended size field (64 bit)
     ffio_wfourcc(pb, mov->mode == MODE_MOV ? "wide" : "free");
-
+    
     mov->mdat_pos = avio_tell(pb);
     avio_wb32(pb, 0); /* size placeholder*/
     ffio_wfourcc(pb, "mdat");
+
     return 0;
 }
 
@@ -5709,6 +5710,18 @@ int ff_mov_write_packet(AVFormatContext *s, AVPacket *pkt)
         } else {
             size = ff_hevc_annexb2mp4(pb, pkt->data, pkt->size, 0, NULL);
         }
+    } else if (par->codec_id == AV_CODEC_ID_VVC && trk->vos_len > 6 &&
+               (AV_RB24(trk->vos_data) == 1 || AV_RB32(trk->vos_data) == 1)) {
+      /* extradata is Annex B, assume the bitstream is too and convert it */
+      if (trk->hint_track >= 0 && trk->hint_track < mov->nb_streams) {
+            ret = ff_vvc_annexb2mp4_buf(pkt->data, &reformatted_data,
+                                         &size, 0, NULL);
+            if (ret < 0)
+	      return ret;
+            avio_write(pb, reformatted_data, size);
+      } else {
+	size = ff_vvc_annexb2mp4(pb, pkt->data, pkt->size, 0, NULL);
+      }
     } else if (par->codec_id == AV_CODEC_ID_AV1) {
         if (trk->hint_track >= 0 && trk->hint_track < mov->nb_streams) {
             ret = ff_av1_filter_obus_buf(pkt->data, &reformatted_data,
@@ -6840,19 +6853,6 @@ static int mov_write_header(AVFormatContext *s)
             avio_skip(pb, mov->reserved_moov_size);
     }
 
-    if (mov->flags & FF_MOV_FLAG_FRAGMENT) {
-        /* If no fragmentation options have been set, set a default. */
-        if (!(mov->flags & (FF_MOV_FLAG_FRAG_KEYFRAME |
-                            FF_MOV_FLAG_FRAG_CUSTOM |
-                            FF_MOV_FLAG_FRAG_EVERY_FRAME)) &&
-            !mov->max_fragment_duration && !mov->max_fragment_size)
-            mov->flags |= FF_MOV_FLAG_FRAG_KEYFRAME;
-    } else {
-        if (mov->flags & FF_MOV_FLAG_FASTSTART)
-            mov->reserved_header_pos = avio_tell(pb);
-        mov_write_mdat_tag(pb, mov);
-    }
-
     ff_parse_creation_time_metadata(s, &mov->time, 1);
     if (mov->time)
         mov->time += 0x7C25B080; // 1970 based -> 1904 based
@@ -6895,7 +6895,6 @@ static int mov_write_header(AVFormatContext *s)
     }
 
     avio_flush(pb);
-
     if (mov->flags & FF_MOV_FLAG_ISML)
         mov_write_isml_manifest(pb, mov, s);
 
@@ -6906,6 +6905,19 @@ static int mov_write_header(AVFormatContext *s)
         mov->moov_written = 1;
         if (mov->flags & FF_MOV_FLAG_GLOBAL_SIDX)
             mov->reserved_header_pos = avio_tell(pb);
+    }
+
+    if (mov->flags & FF_MOV_FLAG_FRAGMENT) {
+      /* If no fragmentation options have been set, set a default. */
+      if (!(mov->flags & (FF_MOV_FLAG_FRAG_KEYFRAME |
+			  FF_MOV_FLAG_FRAG_CUSTOM |
+			  FF_MOV_FLAG_FRAG_EVERY_FRAME)) &&
+	  !mov->max_fragment_duration && !mov->max_fragment_size)
+	mov->flags |= FF_MOV_FLAG_FRAG_KEYFRAME;
+    } else {
+      if (mov->flags & FF_MOV_FLAG_FASTSTART)
+	mov->reserved_header_pos = avio_tell(pb);
+      mov_write_mdat_tag(pb, mov);
     }
 
     return 0;
@@ -7098,8 +7110,8 @@ static int mov_write_trailer(AVFormatContext *s)
 
     if (!(mov->flags & FF_MOV_FLAG_FRAGMENT)) {
         moov_pos = avio_tell(pb);
-
-        /* Write size of mdat tag */
+	
+	/* Write size of mdat tag */
         if (mov->mdat_size + 8 <= UINT32_MAX) {
             avio_seek(pb, mov->mdat_pos, SEEK_SET);
             avio_wb32(pb, mov->mdat_size + 8);
@@ -7139,6 +7151,7 @@ static int mov_write_trailer(AVFormatContext *s)
             if ((res = mov_write_moov_tag(pb, mov, s)) < 0)
                 return res;
         }
+	
         res = 0;
     } else {
         mov_auto_flush_fragment(s, 1);
