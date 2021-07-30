@@ -414,16 +414,15 @@ static int vvcc_parse_vps(GetBitContext *gb,
       if(!vps_default_ptl_dpb_hrd_max_tid_flag)
         vps_ptl_max_tid[i] = get_bits(gb, 3);
       
-    while(gb->index%8 != 0)
-      skip_bits1(gb);
+      while(gb->index%8 != 0)
+        skip_bits1(gb);
 
-    for(int i = 0; i <= vps_num_ptls_minus1; i++) {
-      vvcc_parse_ptl(gb, vvcc, vps_pt_present_flag[i], vps_ptl_max_tid[i]);
+      for(int i = 0; i <= vps_num_ptls_minus1; i++) {
+        vvcc_parse_ptl(gb, vvcc, vps_pt_present_flag[i], vps_ptl_max_tid[i]);
+      }
     }
-    
     free(vps_pt_present_flag);
     free(vps_ptl_max_tid);
-
     /* nothing useful for vvcc past this point */
     return 0;
 }
