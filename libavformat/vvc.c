@@ -86,8 +86,7 @@ typedef struct VVCCProfileTierLevel {
 } VVCCProfileTierLevel;
 
 
-static void vvcc_update_ptl(VVCDecoderConfigurationRecord *vvcc,
-                            VVCCProfileTierLevel *ptl)
+static void vvcc_update_ptl(VVCDecoderConfigurationRecord *vvcc, VVCCProfileTierLevel *ptl)
 {
     /*
      * The level indication general_level_idc must indicate a level of
@@ -95,9 +94,9 @@ static void vvcc_update_ptl(VVCDecoderConfigurationRecord *vvcc,
      * highest tier in all the parameter sets.
      */
     if (vvcc->general_tier_flag < ptl->tier_flag)
-        vvcc->general_level_idc = ptl->general_level_idc;
+      vvcc->general_level_idc = ptl->general_level_idc;
     else
-        vvcc->general_level_idc = FFMAX(vvcc->general_level_idc, ptl->general_level_idc);
+      vvcc->general_level_idc = FFMAX(vvcc->general_level_idc, ptl->general_level_idc);
 
     /*
      * The tier indication general_tier_flag must indicate a tier equal to or
@@ -153,13 +152,13 @@ static void vvcc_update_ptl(VVCDecoderConfigurationRecord *vvcc,
     for(int i = vvcc->num_sublayers - 2; i >= 0; i--) {
       vvcc->ptl_sublayer_level_present_flag[i] |= ptl->ptl_sublayer_level_present_flag[i];
       if(vvcc->ptl_sublayer_level_present_flag[i]) {
-	vvcc->sublayer_level_idc[i] = FFMAX(vvcc->sublayer_level_idc[i], ptl->sublayer_level_idc[i]);
+        vvcc->sublayer_level_idc[i] = FFMAX(vvcc->sublayer_level_idc[i], ptl->sublayer_level_idc[i]);
       } else {
-	if(i == vvcc->num_sublayers - 1) {
-	  vvcc->sublayer_level_idc[i] = vvcc->general_level_idc;
-	} else {
-	  vvcc->sublayer_level_idc[i] = vvcc->sublayer_level_idc[i+1];
-	}
+        if(i == vvcc->num_sublayers - 1) {
+          vvcc->sublayer_level_idc[i] = vvcc->general_level_idc;
+        } else {
+          vvcc->sublayer_level_idc[i] = vvcc->sublayer_level_idc[i+1];
+        }
       }
     }
 
@@ -171,7 +170,7 @@ static void vvcc_update_ptl(VVCDecoderConfigurationRecord *vvcc,
 
 static void vvcc_parse_ptl(GetBitContext *gb,
                            VVCDecoderConfigurationRecord *vvcc,
-			   unsigned int profileTierPresentFlag,
+                           unsigned int profileTierPresentFlag,
                            unsigned int max_sub_layers_minus1)
 {
     unsigned int i;
@@ -190,12 +189,12 @@ static void vvcc_parse_ptl(GetBitContext *gb,
     if(profileTierPresentFlag) {
       general_ptl.gci_present_flag = get_bits1(gb);
       if(general_ptl.gci_present_flag) {
-	  general_ptl.gci_general_constraints = get_bits_long(gb, 71);
-	  general_ptl.gci_num_reserved_bits = get_bits(gb, 8);
-	  skip_bits(gb, general_ptl.gci_num_reserved_bits);
-	}
+          general_ptl.gci_general_constraints = get_bits_long(gb, 71);
+          general_ptl.gci_num_reserved_bits = get_bits(gb, 8);
+          skip_bits(gb, general_ptl.gci_num_reserved_bits);
+        }
       while(gb->index % 8 != 0)
-	skip_bits1(gb);
+        skip_bits1(gb);
     }
 
     general_ptl.ptl_sublayer_level_present_flag = (uint8_t *) malloc(sizeof(uint8_t)*max_sub_layers_minus1);
@@ -214,7 +213,7 @@ static void vvcc_parse_ptl(GetBitContext *gb,
       general_ptl.ptl_num_sub_profiles = get_bits(gb, 8);
       general_ptl.general_sub_profile_idc = (uint8_t *) malloc(sizeof(uint8_t)*general_ptl.ptl_num_sub_profiles);
       for(int i = 0; i < general_ptl.ptl_num_sub_profiles; i++) {	
-	general_ptl.general_sub_profile_idc[i] = get_bits_long(gb, 32);
+        general_ptl.general_sub_profile_idc[i] = get_bits_long(gb, 32);
       }
     }
   
@@ -378,30 +377,30 @@ static int vvcc_parse_vps(GetBitContext *gb,
     for(int i =0; i <= vps_max_layers_minus1; i++) {
       skip_bits(gb, 6); //vps_default_ptl_dpb_hrd_max_tid_flagsvps_layer_id[i]
       if(i > 0 && !vps_all_independant_layer_flag) {
-	if(get_bits1(gb)) { // vps_independant_layer_flag
-	  unsigned int vps_max_tid_ref_present_flag = get_bits1(gb);
-	  for (int j =0; j<i; j++) {
-	    if(vps_max_tid_ref_present_flag && get_bits1(gb)) // vps_direct_ref_layer_flag[i][j]
-	      skip_bits(gb, 3); //vps_max_tid_il_ref_pics_plus1
-	  }
-	}
+        if(get_bits1(gb)) { // vps_independant_layer_flag
+          unsigned int vps_max_tid_ref_present_flag = get_bits1(gb);
+          for (int j =0; j<i; j++) {
+            if(vps_max_tid_ref_present_flag && get_bits1(gb)) // vps_direct_ref_layer_flag[i][j]
+              skip_bits(gb, 3); //vps_max_tid_il_ref_pics_plus1
+          }
+        }
       }
     }
 
     if(vps_max_layers_minus1 > 0) {
       if(vps_all_independant_layer_flag)
-	vps_each_layer_is_an_ols_flag = get_bits1(gb);
+        vps_each_layer_is_an_ols_flag = get_bits1(gb);
       if(vps_each_layer_is_an_ols_flag) {
-	if(!vps_all_independant_layer_flag)
-	  vps_ols_mode_idc = get_bits(gb, 2);
-	if(vps_ols_mode_idc == 2) {
-	  unsigned int vps_num_output_layer_sets_minus2 = get_bits(gb, 8);
-	  for( int i = 1; i <= vps_num_output_layer_sets_minus2 +1; i++) {
-	    for( int j = 0; j <= vps_max_layers_minus1; j++) {
-	      skip_bits1(gb);
-	    }
-	  }
-	}
+        if(!vps_all_independant_layer_flag)
+          vps_ols_mode_idc = get_bits(gb, 2);
+        if(vps_ols_mode_idc == 2) {
+          unsigned int vps_num_output_layer_sets_minus2 = get_bits(gb, 8);
+          for( int i = 1; i <= vps_num_output_layer_sets_minus2 +1; i++) {
+            for( int j = 0; j <= vps_max_layers_minus1; j++) {
+              skip_bits1(gb);
+            }
+          }
+        }
       }
       vps_num_ptls_minus1 = get_bits(gb, 8);
     }
@@ -411,10 +410,9 @@ static int vvcc_parse_vps(GetBitContext *gb,
     vps_ptl_max_tid = (unsigned int *) malloc(sizeof(unsigned int) * (vps_num_ptls_minus1+1));
     for(int i = 0; i <= vps_num_ptls_minus1; i++) {
       if(i>0)
-	vps_pt_present_flag[i] = get_bits1(gb);
+        vps_pt_present_flag[i] = get_bits1(gb);
       if(!vps_default_ptl_dpb_hrd_max_tid_flag)
-	vps_ptl_max_tid[i] = get_bits(gb, 3);
-    }
+        vps_ptl_max_tid[i] = get_bits(gb, 3);
       
     while(gb->index%8 != 0)
       skip_bits1(gb);
@@ -496,31 +494,31 @@ static int vvcc_parse_sps(GetBitContext *gb,
     if(get_bits1(gb)) { // sps_subpic_info_present_flag
       unsigned int sps_num_subpics_minus1 = get_ue_golomb_long(gb);
       if(sps_num_subpics_minus1 > 0) { // sps_num_subpics_minus1
-	sps_independant_subpics_flag = get_bits1(gb);
-	sps_subpic_same_size_flag = get_bits1(gb);
+        sps_independant_subpics_flag = get_bits1(gb);
+        sps_subpic_same_size_flag = get_bits1(gb);
       }
       for(int i = 0; sps_num_subpics_minus1 > 0 && i <= sps_num_subpics_minus1; i++) {
-	if(!sps_subpic_same_size_flag || i == 0) {
-	  int len = FFMIN(log2_ctu_size_minus5 +5, 16);
-	  if(i > 0 && sps_pic_width_max_in_luma_sample > CTB_SIZE_Y)
-	    skip_bits(gb, len);
-	  if(i > 0 && sps_pic_height_max_in_luma_sample > CTB_SIZE_Y)
-	    skip_bits(gb, len);
-	  if(i < sps_num_subpics_minus1 && sps_pic_width_max_in_luma_sample > CTB_SIZE_Y)
-	    skip_bits(gb, len);
-	  if(i < sps_num_subpics_minus1 && sps_pic_height_max_in_luma_sample > CTB_SIZE_Y)
-	    skip_bits(gb, len);
-	}
-	if(!sps_independant_subpics_flag) {
-	  skip_bits(gb, 2); // sps_subpic_treated_as_pic_flag && sps_loop_filter_across_subpic_enabled_flag
-	}
+        if(!sps_subpic_same_size_flag || i == 0) {
+          int len = FFMIN(log2_ctu_size_minus5 +5, 16);
+          if(i > 0 && sps_pic_width_max_in_luma_sample > CTB_SIZE_Y)
+            skip_bits(gb, len);
+          if(i > 0 && sps_pic_height_max_in_luma_sample > CTB_SIZE_Y)
+            skip_bits(gb, len);
+          if(i < sps_num_subpics_minus1 && sps_pic_width_max_in_luma_sample > CTB_SIZE_Y)
+            skip_bits(gb, len);
+          if(i < sps_num_subpics_minus1 && sps_pic_height_max_in_luma_sample > CTB_SIZE_Y)
+            skip_bits(gb, len);
+        }
+        if(!sps_independant_subpics_flag) {
+          skip_bits(gb, 2); // sps_subpic_treated_as_pic_flag && sps_loop_filter_across_subpic_enabled_flag
+        }
       }
       get_ue_golomb_long(gb); // sps_subpic_id_len_minus1
       if(get_bits1(gb)) { // sps_subpic_id_mapping_explicitly_signalled_flag
-	if(get_bits1(gb)) // sps_subpic_id_mapping_present_flag
-	  for(int i = 0; i <= sps_num_subpics_minus1; i++) {
-	    skip_bits1(gb); // sps_subpic_id[i]
-	  }
+        if(get_bits1(gb)) // sps_subpic_id_mapping_present_flag
+          for(int i = 0; i <= sps_num_subpics_minus1; i++) {
+            skip_bits1(gb); // sps_subpic_id[i]
+          }
       }
     }
     vvcc->bit_depth_minus8 = get_ue_golomb_long(gb); 
@@ -646,8 +644,8 @@ static int vvcc_add_nal_unit(uint8_t *nal_buf, uint32_t nal_size,
                                       ps_array_completeness, vvcc);
         if (ret < 0)
             goto end;
-	else if (nal_type == VVC_OPI_NUT)
-	  printf("OPI parsing goes here\n");
+        else if (nal_type == VVC_OPI_NUT)
+          printf("OPI parsing goes here\n");
         else if (nal_type == VVC_VPS_NUT)
             ret = vvcc_parse_vps(&gbc, vvcc);
         else if (nal_type == VVC_SPS_NUT)
@@ -752,7 +750,7 @@ static int vvcc_write(AVIOContext *pb, VVCDecoderConfigurationRecord *vvcc)
             av_log(NULL, AV_LOG_TRACE,
                     "nalUnitLength[%"PRIu8"][%"PRIu16"]:                 %"PRIu16"\n",
                     i, j, vvcc->array[i].nalUnitLength[j]);
-		    }*/
+                    }*/
 
     /*
      * We need at least one of each: VPS and SPS.
@@ -801,7 +799,7 @@ static int vvcc_write(AVIOContext *pb, VVCDecoderConfigurationRecord *vvcc)
     /* unsigned int (7) general_profile_idc 
        unsigned int (1) general_tier_flag */
     avio_w8(pb, vvcc->general_profile_idc << 1 | vvcc->general_tier_flag);
-	    
+            
     /* unsigned int (8) general_level_idc */
     avio_w8(pb, vvcc->general_level_idc);
 
@@ -830,7 +828,7 @@ static int vvcc_write(AVIOContext *pb, VVCDecoderConfigurationRecord *vvcc)
     
     for(int i = vvcc->num_sublayers -2; i >= 0; i--) {
       if(vvcc->ptl_sublayer_level_present_flag[i])
-	avio_w8(pb, vvcc->sublayer_level_idc[i]);
+        avio_w8(pb, vvcc->sublayer_level_idc[i]);
     }
     
     /* unsigned int(8) num_sub_profiles; */
@@ -870,13 +868,13 @@ static int vvcc_write(AVIOContext *pb, VVCDecoderConfigurationRecord *vvcc)
                     vvcc->array[i].NAL_unit_type & 0x1f);
         /* unsigned int(16) numNalus; */
       if(vvcc->array[i].NAL_unit_type != VVC_DCI_NUT && vvcc->array[i].NAL_unit_type != VVC_OPI_NUT)
-	avio_wb16(pb, vvcc->array[i].numNalus);
+        avio_wb16(pb, vvcc->array[i].numNalus);
       for (j = 0; j < vvcc->array[i].numNalus; j++) {
-	/* unsigned int(16) nalUnitLength; */
-	avio_wb16(pb, vvcc->array[i].nalUnitLength[j]);
+        /* unsigned int(16) nalUnitLength; */
+        avio_wb16(pb, vvcc->array[i].nalUnitLength[j]);
 
-	/* bit(8*nalUnitLength) nalUnit; */
-	avio_write(pb, vvcc->array[i].nalUnit[j], vvcc->array[i].nalUnitLength[j]);
+        /* bit(8*nalUnitLength) nalUnit; */
+        avio_write(pb, vvcc->array[i].nalUnit[j], vvcc->array[i].nalUnitLength[j]);
       }
     }
 
@@ -984,11 +982,10 @@ int ff_isom_write_vvcc(AVIOContext *pb, const uint8_t *data,
     while (end - buf > 4) {
         uint32_t len = FFMIN(AV_RB32(buf), end - buf - 4);
         uint8_t type = (buf[5] >> 3);
-	
         buf += 4;
 
         switch (type) {
-	case VVC_OPI_NUT:
+        case VVC_OPI_NUT:
         case VVC_VPS_NUT:
         case VVC_SPS_NUT:
         case VVC_PPS_NUT:
