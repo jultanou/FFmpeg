@@ -212,7 +212,7 @@ static void vvcc_parse_ptl(GetBitContext *gb,
     if(profileTierPresentFlag) {
       general_ptl.ptl_num_sub_profiles = get_bits(gb, 8);
       general_ptl.general_sub_profile_idc = (uint8_t *) malloc(sizeof(uint8_t)*general_ptl.ptl_num_sub_profiles);
-      for(int i = 0; i < general_ptl.ptl_num_sub_profiles; i++) {	
+      for(int i = 0; i < general_ptl.ptl_num_sub_profiles; i++) {
         general_ptl.general_sub_profile_idc[i] = get_bits_long(gb, 32);
       }
     }

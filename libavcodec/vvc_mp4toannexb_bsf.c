@@ -55,32 +55,32 @@ static int vvc_extradata_to_annexb(AVBSFContext *ctx)
     length_size = (( temp & 6) >> 1) + 1;
     ptl_present = temp & 1;
     if (ptl_present) {
-		int num_bytes_constraint_info;
-		int general_profile_idc;
-		int general_tier_flag;
-		int ptl_num_sub_profiles;
-		int temp3, temp4;
-		int temp2 = bytestream2_get_be16(&gb);
-        int ols_idx  = (temp2 >> 7) & 0x1ff;
-        int num_sublayers  = (temp2 >> 4) & 0x7;
-        int constant_frame_rate = (temp2 >> 2) & 0x3;
-        int chroma_format_idc = temp2 & 0x3;
-        int bit_depth_minus8 = (bytestream2_get_byte(&gb) >> 5) & 0x7;
-        av_log(ctx, AV_LOG_DEBUG,
-            "bit_depth_minus8 %d chroma_format_idc %d\n", bit_depth_minus8, chroma_format_idc);
-        // VvcPTLRecord(num_sublayers) native_ptl
-        temp3 = bytestream2_get_byte(&gb);
-        num_bytes_constraint_info = (temp3) & 0x3f;
-        temp4 = bytestream2_get_byte(&gb);
-        general_profile_idc = (temp4 >> 1) & 0x7f;
-        general_tier_flag = (temp4) & 1;
-        av_log(ctx, AV_LOG_DEBUG,
-            "general_profile_idc %d, num_sublayers %d num_bytes_constraint_info %d\n", general_profile_idc, num_sublayers, num_bytes_constraint_info);
-        for (i = 0; i < num_bytes_constraint_info; i++)
-            // unsigned int(1) ptl_frame_only_constraint_flag;
-            // unsigned int(1) ptl_multi_layer_enabled_flag;
-            // unsigned int(8*num_bytes_constraint_info - 2) general_constraint_info;
-            bytestream2_get_byte(&gb);
+      int num_bytes_constraint_info;
+      int general_profile_idc;
+      int general_tier_flag;
+      int ptl_num_sub_profiles;
+      int temp3, temp4;
+      int temp2 = bytestream2_get_be16(&gb);
+      int ols_idx  = (temp2 >> 7) & 0x1ff;
+      int num_sublayers  = (temp2 >> 4) & 0x7;
+      int constant_frame_rate = (temp2 >> 2) & 0x3;
+      int chroma_format_idc = temp2 & 0x3;
+      int bit_depth_minus8 = (bytestream2_get_byte(&gb) >> 5) & 0x7;
+      av_log(ctx, AV_LOG_DEBUG,
+             "bit_depth_minus8 %d chroma_format_idc %d\n", bit_depth_minus8, chroma_format_idc);
+      // VvcPTLRecord(num_sublayers) native_ptl
+      temp3 = bytestream2_get_byte(&gb);
+      num_bytes_constraint_info = (temp3) & 0x3f;
+      temp4 = bytestream2_get_byte(&gb);
+      general_profile_idc = (temp4 >> 1) & 0x7f;
+      general_tier_flag = (temp4) & 1;
+      av_log(ctx, AV_LOG_DEBUG,
+             "general_profile_idc %d, num_sublayers %d num_bytes_constraint_info %d\n", general_profile_idc, num_sublayers, num_bytes_constraint_info);
+      for (i = 0; i < num_bytes_constraint_info; i++)
+        // unsigned int(1) ptl_frame_only_constraint_flag;
+        // unsigned int(1) ptl_multi_layer_enabled_flag;
+        // unsigned int(8*num_bytes_constraint_info - 2) general_constraint_info;
+        bytestream2_get_byte(&gb);
         /*for (i=num_sublayers - 2; i >= 0; i--)
             unsigned int(1) ptl_sublayer_level_present_flag[i];
         for (j=num_sublayers; j<=8 && num_sublayers > 1; j++)

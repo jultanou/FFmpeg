@@ -7110,8 +7110,8 @@ static int mov_write_trailer(AVFormatContext *s)
 
     if (!(mov->flags & FF_MOV_FLAG_FRAGMENT)) {
         moov_pos = avio_tell(pb);
-	
-	/* Write size of mdat tag */
+        
+        /* Write size of mdat tag */
         if (mov->mdat_size + 8 <= UINT32_MAX) {
             avio_seek(pb, mov->mdat_pos, SEEK_SET);
             avio_wb32(pb, mov->mdat_size + 8);
@@ -7151,7 +7151,6 @@ static int mov_write_trailer(AVFormatContext *s)
             if ((res = mov_write_moov_tag(pb, mov, s)) < 0)
                 return res;
         }
-	
         res = 0;
     } else {
         mov_auto_flush_fragment(s, 1);
