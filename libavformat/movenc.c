@@ -4964,11 +4964,10 @@ static int mov_write_mdat_tag(AVIOContext *pb, MOVMuxContext *mov)
 {
     avio_wb32(pb, 8);    // placeholder for extended size field (64 bit)
     ffio_wfourcc(pb, mov->mode == MODE_MOV ? "wide" : "free");
-    
+
     mov->mdat_pos = avio_tell(pb);
     avio_wb32(pb, 0); /* size placeholder*/
     ffio_wfourcc(pb, "mdat");
-
     return 0;
 }
 
@@ -5717,10 +5716,10 @@ int ff_mov_write_packet(AVFormatContext *s, AVPacket *pkt)
             ret = ff_vvc_annexb2mp4_buf(pkt->data, &reformatted_data,
                                          &size, 0, NULL);
             if (ret < 0)
-	      return ret;
+                return ret;
             avio_write(pb, reformatted_data, size);
       } else {
-	size = ff_vvc_annexb2mp4(pb, pkt->data, pkt->size, 0, NULL);
+          size = ff_vvc_annexb2mp4(pb, pkt->data, pkt->size, 0, NULL);
       }
     } else if (par->codec_id == AV_CODEC_ID_AV1) {
         if (trk->hint_track >= 0 && trk->hint_track < mov->nb_streams) {
@@ -6908,16 +6907,16 @@ static int mov_write_header(AVFormatContext *s)
     }
 
     if (mov->flags & FF_MOV_FLAG_FRAGMENT) {
-      /* If no fragmentation options have been set, set a default. */
-      if (!(mov->flags & (FF_MOV_FLAG_FRAG_KEYFRAME |
-			  FF_MOV_FLAG_FRAG_CUSTOM |
-			  FF_MOV_FLAG_FRAG_EVERY_FRAME)) &&
-	  !mov->max_fragment_duration && !mov->max_fragment_size)
-	mov->flags |= FF_MOV_FLAG_FRAG_KEYFRAME;
+        /* If no fragmentation options have been set, set a default. */
+        if (!(mov->flags & (FF_MOV_FLAG_FRAG_KEYFRAME |
+                            FF_MOV_FLAG_FRAG_CUSTOM |
+                            FF_MOV_FLAG_FRAG_EVERY_FRAME)) &
+            !mov->max_fragment_duration && !mov->max_fragment_size)
+            mov->flags |= FF_MOV_FLAG_FRAG_KEYFRAME;
     } else {
-      if (mov->flags & FF_MOV_FLAG_FASTSTART)
-	mov->reserved_header_pos = avio_tell(pb);
-      mov_write_mdat_tag(pb, mov);
+        if (mov->flags & FF_MOV_FLAG_FASTSTART)
+            mov->reserved_header_pos = avio_tell(pb);
+        mov_write_mdat_tag(pb, mov);
     }
 
     return 0;

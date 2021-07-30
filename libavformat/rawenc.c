@@ -354,10 +354,8 @@ static int hevc_check_bitstream(struct AVFormatContext *s, const AVPacket *pkt)
 {
     AVStream *st = s->streams[0];
     if (pkt->size >= 5 && AV_RB32(pkt->data) != 0x0000001 &&
-	AV_RB24(pkt->data) != 0x000001) {
-      printf("adding hevc mp4toannexb\n");
+                          AV_RB24(pkt->data) != 0x000001)
         return ff_stream_add_bitstream_filter(st, "hevc_mp4toannexb", NULL);
-    }
     return 1;
 }
 
