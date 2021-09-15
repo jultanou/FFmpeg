@@ -2351,14 +2351,14 @@ static int FUNC(picture_header)(CodedBitstreamContext *ctx, RWContext *rw,
         }
 
         min_qt_log2_size_intra_y =
-            current->ph_log2_diff_min_qt_min_cb_intra_slice_luma + ctb_log2_size_y;
+            current->ph_log2_diff_min_qt_min_cb_intra_slice_luma + min_cb_log2_size_y;
         if (pps->pps_cu_qp_delta_enabled_flag)
             ue(ph_cu_qp_delta_subdiv_intra_slice, 0,
                2 * (ctb_log2_size_y - min_qt_log2_size_intra_y +
                current->ph_max_mtt_hierarchy_depth_intra_slice_luma));
         else
             infer(ph_cu_qp_delta_subdiv_intra_slice, 0);
-
+            
         if (pps->pps_cu_chroma_qp_offset_list_enabled_flag)
             ue(ph_cu_chroma_qp_offset_subdiv_intra_slice, 0,
                2 * (ctb_log2_size_y - min_qt_log2_size_intra_y +
